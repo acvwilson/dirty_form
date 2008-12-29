@@ -19,21 +19,33 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
   $.fn.dirty_form = function(){
     return this.each(function(){
       form = $(this);
-      var text_inputs = $("#" + form.attr("id") + " :text");
+      var inputs = $("#" + form.attr("id")).find(":input:not(:hidden,:submit)")
       $.DirtyForm.logger("Storing Data!");
-      text_inputs.each(function(i){
+      inputs.each(function(i){
         var input = $(this);
-        input.data("initial",input.val());
+        if(input.is(':radio,:checkbox')){
+          input.data('initial',input.attr('checked')).blur(function(){
+            var my = $(this);
+            if(my.data('initial') != my.attr('checked')) {
+              $.DirtyForm.logger('Dirty form set!');
+              form.data("dirty",true);
+            } else {
+              form.data("dirty",false);
+            }
+          });
+          
+        } else {
+          input.data("initial",input.val()).blur(function(){
+            var my = $(this);
+            if(my.data("initial") != my.val()) {
+              $.DirtyForm.logger('Dirty form set!');
+              form.data("dirty",true);
+            } else {
+              form.data("dirty",false);
+            }
+          });
+        }
         
-        input.blur(function(){
-          var my = $(this);
-          if(my.data("initial") != my.val()) {
-            $.DirtyForm.logger('Dirty form set!');
-            form.data("dirty",true);
-          } else {
-            form.data("dirty",false);
-          }
-        });
       });
     });
   };
