@@ -1,3 +1,10 @@
+// TODO's 
+// remove dependency of ID attribute
+// Support dynamicaly added inputs (event delegation?)
+// send off forms dirty event when a form is dirtied so the page knows its been tarnished.
+
+
+
 if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
 
 (function($){
@@ -17,33 +24,37 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
   });
   
   $.fn.dirty_form = function(){
+    
+    function checkbox_checker(){
+      var my = $(this);
+      if(my.data('initial') != my.attr('checked')) {
+        $.DirtyForm.logger('Dirty form set!');
+        form.data("dirty",true);
+      } else {
+        form.data("dirty",false);
+      }
+    }
+    
+    function input_checker(){
+      var my = $(this);
+      if(my.data("initial") != my.val()) {
+        $.DirtyForm.logger('Dirty form set!');
+        form.data("dirty",true);
+      } else {
+        form.data("dirty",false);
+      }
+    }
+    
     return this.each(function(){
       form = $(this);
-      var inputs = $("#" + form.attr("id")).find(":input:not(:hidden,:submit)")
+      var inputs = $("#" + form.attr("id")).find(":input:not(:hidden,:submit,:password)")
       $.DirtyForm.logger("Storing Data!");
       inputs.each(function(i){
         var input = $(this);
         if(input.is(':radio,:checkbox')){
-          input.data('initial',input.attr('checked')).blur(function(){
-            var my = $(this);
-            if(my.data('initial') != my.attr('checked')) {
-              $.DirtyForm.logger('Dirty form set!');
-              form.data("dirty",true);
-            } else {
-              form.data("dirty",false);
-            }
-          });
-          
+          input.data('initial',input.attr('checked')).blur(function(){checkbox_checker()});
         } else {
-          input.data("initial",input.val()).blur(function(){
-            var my = $(this);
-            if(my.data("initial") != my.val()) {
-              $.DirtyForm.logger('Dirty form set!');
-              form.data("dirty",true);
-            } else {
-              form.data("dirty",false);
-            }
-          });
+          input.data("initial",input.val()).blur(function(){input_checker()});
         }
         
       });
