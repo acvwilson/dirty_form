@@ -1,5 +1,4 @@
 // TODO's 
-// remove dependency of ID attribute
 // Support dynamicaly added inputs (event delegation?)
 // send off forms dirty event when a form is dirtied so the page knows its been tarnished.
 
@@ -62,18 +61,12 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
   };
   
   $.fn.dirty_stopper = function(){
-    var defaults = {
-      formID: $.DirtyForm.formID
-    }
-    
-    var settings = $.extend(defaults, arguments.length != 0 ? arguments[0] : {});
-    
     $.DirtyForm.logger("Setting dirty stoppers")
     
     return this.each(function(){
       stopper = $(this);
       stopper.click(function(event){
-        if($("#" + settings.formID).data("dirty")) {
+        if($("form").data("dirty")) {
           event.preventDefault();
           var div = $("<div id='dirty_stopper_dialog'/>").appendTo(document.body)
           href = $(this).attr('href')
@@ -96,19 +89,13 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
     });
   }
   
-  $.fn.dirty_checker = function(){
-    var defaults = {
-      formID: $.DirtyForm.formID
-    }
-    
-    var settings = $.extend(defaults, arguments.length != 0 ? arguments[0] : {});
-    
+  $.fn.dirty_checker = function(){    
     $.DirtyForm.logger("Setting dirty checkers!")
     
     return this.each(function(){
       checker = $(this);
       checker.click(function(){
-        if($("#" + settings.formID).data("dirty")) {
+        if($("form").data("dirty")) {
           alert("Dirty Form!!");
         } else {
           alert("Clean Form ...phew!");
