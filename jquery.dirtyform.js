@@ -1,5 +1,5 @@
 // TODO's 
-// Support dynamicaly added inputs (event delegation?)
+// Support dynamicaly added inputs (livequery dependency)
 // send off forms dirty event when a form is dirtied so the page knows its been tarnished.
 
 
@@ -11,8 +11,8 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
   $.extend({
     DirtyForm: {
       debug: true, // print out debug info? works best with firebug.
-      formID: null,
       hasFirebug:   "console" in window && "firebug" in window.console,
+      changedClass: 'changed',
       logger:       function(msg){
                       if(this.debug){
                         msg = "DirtyForm: " + msg;
@@ -23,24 +23,31 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
   });
   
   $.fn.dirty_form = function(){
+    var defaults = {
+      changedClass: $.DirtyForm.changedClass
+    }
     
-    function checkbox_checker(){
-      var my = $(this);
-      if(my.data('initial') != my.attr('checked')) {
+    var settings = $.extend(defaults, arguments.length != 0 ? arguments[0] : {});
+    
+    function input_checker(my,inputs){
+      var form = my.parents("form")
+      if(my.data("initial") != input_value(my)) {
         $.DirtyForm.logger('Dirty form set!');
-        form.data("dirty",true);
+        form.data("dirty", true);
+        my.addClass(settings.changedClass)
       } else {
+        my.removeClass(settings.changedClass)
+      }
+      if(!inputs.filter('.' + settings.changedClass).size()){
         form.data("dirty",false);
       }
     }
     
-    function input_checker(){
-      var my = $(this);
-      if(my.data("initial") != my.val()) {
-        $.DirtyForm.logger('Dirty form set!');
-        form.data("dirty",true);
+    function input_value(input){
+      if(input.is(':radio,:checkbox')){
+        return input.attr('checked');
       } else {
-        form.data("dirty",false);
+        return input.val();
       }
     }
     
@@ -50,12 +57,7 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
       $.DirtyForm.logger("Storing Data!");
       inputs.each(function(i){
         var input = $(this);
-        if(input.is(':radio,:checkbox')){
-          input.data('initial',input.attr('checked')).blur(function(){checkbox_checker()});
-        } else {
-          input.data("initial",input.val()).blur(function(){input_checker()});
-        }
-        
+        input.data('initial', input_value(input)).blur(function(){input_checker(input, inputs)})
       });
     });
   };
