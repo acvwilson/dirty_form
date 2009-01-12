@@ -1,6 +1,7 @@
 // TODO's 
 // send off forms dirty event when a form is dirtied so the page knows its been tarnished. (done, dvd 09-01-2009)
 // make the stoppers work for anchor links
+// Write docs + examples (done, dvd 09-01-2009)
 // investigate: can make this work for "non-form"-forms too? I.e. given a container element, check dirtiness for the inputs inside it.
 // investigate: possible to change this so that one can provide an extra selector to further filter the inputs in a form. I.e. "this form is to be considered dirty if inputs with class foo changes"
 /*
@@ -22,6 +23,20 @@ Example usage:
     $("form").dirty_form({changeClass: "forever_changes"});
   });
     
+  // Often times you want to apply the "changed" CSS class to more than one element.
+  // To support this, DirtyForm can take a "addClassOn" option.
+  // Pass in a function that will be executed in the context of the dirty input element
+  // and the return value of the function will be added to the list of elements that
+  // get the "changed" class. In this function "this" refers to the dirty element.
+  // The code below will add the "change" class to the dirty input and to any labels 
+  // descendants of the li element that contains the input. 
+  // Example:
+  $("form").dirty_form({
+    addClassOn: function(){ 
+      return this.parents("li").find("label");
+      }
+    });
+  
   // Forms within the "ch-ch-ch-changes" DIV in the page will be observed
   // Whenever an input value changes it will get the 'changed' class added to it
   $(function(){
@@ -47,7 +62,7 @@ Example usage:
   $(function(){
     $.DirtyForm.dynamic = false // Don't bother watching out for dynamic additions to the DOM
     $.DirtyForm.debug = true    // Turn on logging
-    $.DirtyForm.logger = my_fancy_logger_fn // Override the default logger from console.log (if Firebug is available) or a plain-jane alert (for IE)
+    $.DirtyForm.logger = my_fancy_logger_fn // Override the default logger from console.log (if Firebug is available) or a plain-jane alert (for IE) -- NOT WORKING RIGHT NOW. GRR
   });
   
   // All configuration options can be set per-instance
@@ -66,8 +81,9 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
   $.extend({
     DirtyForm: {
       debug         : false, // print out debug info? works best with firebug.
-      dynamic       : $.isFunction($.livequery),
       changedClass  : 'changed',
+      addClassOn    : new Function,
+      observed_forms: [], 
       hasFirebug    : "console" in window && "firebug" in window.console,
       logger        : function(msg){
                         if(this.debug){
@@ -83,61 +99,75 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
   $.fn.dirty_form = function(){
     var defaults = {
       changedClass  : $.DirtyForm.changedClass,
-      dynamic       : $.DirtyForm.dynamic,
+      addClassOn    : $.DirtyForm.addClassOn,
+      dynamic       : $.isFunction($.livequery)
     }
     
     var settings = $.extend(defaults, arguments.length != 0 ? arguments[0] : {});
-    
-    function input_checker(my,inputs){
-      var form = my.parents("form"), initial = my.data("initial"), current = input_value(my)
-      
-      if(initial != current) {
-        $.DirtyForm.logger("Form "+form.id+" is dirty. Changed from \""+initial+"\" to \""+current+"\"");
-        form
-          .data("dirty", true)                                      //TODO: check if we can use an expando property here
-          .trigger("dirty", {target: my, from: initial, to: current, preventDefault: function(){return false}, stopPropagation: function(){return false}, bubbles: true, cancelable: true});
-        my.addClass(settings.changedClass)                          // TODO: maybe we need to check if the class exists already?
-          
-      } else {
-        my.removeClass(settings.changedClass)
-      }
-      
-      if(!inputs.filter('.' + settings.changedClass).size()){
-        form
-          .data("dirty",false)
-          .trigger("clean", {target: my, preventDefault: function(){return false}, stopPropagation: function(){return false}, bubbles: true, cancelable: true});
-      }
-    }
-    
+
     function input_value(input){
       if(input.is(':radio,:checkbox')){
-        return input.attr('checked');
+        return typeof(input.attr("checked")) == "undefined" ? false : input.attr("checked");
       } else {
         return input.val();
       }
     }
     
+    function input_checker(event){
+      var npt = $(this), form = npt.parents("form"), initial = npt.data("initial"), current = input_value(npt), inputs = event.data
+      if(initial != current) {
+        $.DirtyForm.logger("Form "+form.id+" is dirty. Changed from \""+initial+"\" to \""+current+"\"");
+        form
+          .data("dirty", true)                                      //TODO: check if we can use an expando property here
+          .trigger("dirty", {target: npt, from: initial, to: current, preventDefault: function(){return false}, stopPropagation: function(){return false}, bubbles: true, cancelable: true});
+        npt
+          .add(settings.addClassOn.apply(npt))
+          .addClass(settings.changedClass);                          // TODO: maybe we need to check if the class exists already?
+          
+      } else {
+        npt
+          .add(settings.addClassOn.apply(npt))
+          .removeClass(settings.changedClass)
+      }
+      
+      if(!inputs.filter('.' + settings.changedClass).size()){
+        form
+          .data("dirty",false)
+          .trigger("clean", {target: npt, preventDefault: function(){return false}, stopPropagation: function(){return false}, bubbles: true, cancelable: true});
+      }
+    }
+    
     return this.each(function(){
       form = $(this);
+
       var inputs = $(':input:not(:hidden,:submit,:password,:button)', form)
+
+      if( $.inArray(this, $.DirtyForm.observed_forms) == -1 ){
+        $.DirtyForm.observed_forms.push(this);  // A new form, pushing on the list of the observed. Pushing the DOM element, rather than the jQuery'ized one, "form", because $.inArray() didn't work... :(
+      }else{
+        // unbind all DirtyForms specific events, then proceed to re-add them
+        form.unbind("dirty").unbind("clean");
+        inputs.unbind("blur.dirty_form");
+      }
 
       $.DirtyForm.logger('Storing initial data for form ' + form.id);
       
       if (settings.dynamic) {
-        // use livequery to perform these functions on the new elements added to the form
-        inputs.livequery(function(){
-          $(this).data('initial', input_value($(this)))
-        }).livequery('blur', function(){
-          input_checker($(this), inputs)
+        inputs.livequery(function(){ // use livequery to perform these functions on the new elements added to the form
+          console.log("New input element in DOM. Setting data: %o", input_value($(this)) )
+          $(this)
+            .data('initial', input_value($(this)))
+            .bind("blur.dirty_form", inputs, input_checker)
         });
-      } else {
-        inputs.each(function(i){
-          // add to whats there now, but don't worry about what's there in the future
-          var input = $(this);
-          input
-            .data('initial', input_value(input))
-            .blur(function(){input_checker(input, inputs)});
+      }else {
+        // inputs.bind("blur.dirty_form", inputs, input_checker)
+        inputs.each(function(){
+          console.log("Init for input. Setting data: %o", input_value($(this)) )
+          $(this)
+            .bind("blur.dirty_form", inputs, input_checker)
+            .data("initial", input_value($(this)));
         });
+        // TODO: missing data("initial")
       }
     });
   };
@@ -204,7 +234,10 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
   // Shortcut to bind a handler to the "ondirty" event
   $.fn.extend({
     dirty: function(fn) {
-      return this.bind('dirty', fn);
-    }
+  		return this.bind('dirty', fn);
+  	},
+  	clean: function(fn) {
+  		return this.bind('clean', fn);
+  	}
   });
 })(jQuery);
