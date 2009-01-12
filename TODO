@@ -1,0 +1,5 @@
+send off forms dirty event when a form is dirtied so the page knows its been tarnished. (done, dvd 09-01-2009)
+make the stoppers work for anchor links
+Write docs + examples (done, dvd 09-01-2009)
+investigate: can make this work for "non-form"-forms too? I.e. given a container element, check dirtiness for the inputs inside it.
+investigate: possible to change this so that one can provide an extra selector to further filter the inputs in a form. I.e. "this form is to be considered dirty if inputs with class foo changes"
