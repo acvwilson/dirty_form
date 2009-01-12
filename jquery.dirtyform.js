@@ -90,6 +90,38 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
                           msg = "DirtyForm: " + msg;
                           this.hasFirebug ? console.log(msg) : alert(msg);
                         }
+                      },
+      input_value   : function(input){
+                        if(input.is(':radio,:checkbox')){
+                          return typeof(input.attr("checked")) == "undefined" ? false : input.attr("checked");
+                        } else {
+                          return input.val();
+                        }
+                      }, 
+      input_checker : function(event){
+                        var npt = $(event.target), form = event.data.form, initial = npt.data("initial"), current = $.DirtyForm.input_value(npt), inputs = event.data.inputs, settings = event.data.settings
+                        
+                        if(initial != current) {
+                          $.DirtyForm.logger("Form "+form.id+" is dirty. Changed from \""+initial+"\" to \""+current+"\"");
+                          $.DirtyForm.logger("Class: "+settings.changedClass);
+                          form
+                            .data("dirty", true)                                      //TODO: check if we can use an expando property here
+                            .trigger("dirty", {target: npt, from: initial, to: current, preventDefault: function(){return false}, stopPropagation: function(){return false}, bubbles: true, cancelable: true});
+                          npt
+                            .add(settings.addClassOn.apply(npt))
+                            .addClass(settings.changedClass);                          // TODO: maybe we need to check if the class exists already?
+                            
+                        } else {
+                          npt
+                            .add(settings.addClassOn.apply(npt))
+                            .removeClass(settings.changedClass)
+                        }
+                        
+                        if(!inputs.filter('.' + settings.changedClass).size()){
+                          form
+                            .data("dirty",false)
+                            .trigger("clean", {target: npt, preventDefault: function(){return false}, stopPropagation: function(){return false}, bubbles: true, cancelable: true});
+                        }
                       }
     }
     
@@ -105,38 +137,6 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
     
     var settings = $.extend(defaults, arguments.length != 0 ? arguments[0] : {});
 
-    function input_value(input){
-      if(input.is(':radio,:checkbox')){
-        return typeof(input.attr("checked")) == "undefined" ? false : input.attr("checked");
-      } else {
-        return input.val();
-      }
-    }
-    
-    function input_checker(event){
-      var npt = $(this), form = npt.parents("form"), initial = npt.data("initial"), current = input_value(npt), inputs = event.data
-      if(initial != current) {
-        $.DirtyForm.logger("Form "+form.id+" is dirty. Changed from \""+initial+"\" to \""+current+"\"");
-        form
-          .data("dirty", true)                                      //TODO: check if we can use an expando property here
-          .trigger("dirty", {target: npt, from: initial, to: current, preventDefault: function(){return false}, stopPropagation: function(){return false}, bubbles: true, cancelable: true});
-        npt
-          .add(settings.addClassOn.apply(npt))
-          .addClass(settings.changedClass);                          // TODO: maybe we need to check if the class exists already?
-          
-      } else {
-        npt
-          .add(settings.addClassOn.apply(npt))
-          .removeClass(settings.changedClass)
-      }
-      
-      if(!inputs.filter('.' + settings.changedClass).size()){
-        form
-          .data("dirty",false)
-          .trigger("clean", {target: npt, preventDefault: function(){return false}, stopPropagation: function(){return false}, bubbles: true, cancelable: true});
-      }
-    }
-    
     return this.each(function(){
       form = $(this);
 
@@ -154,20 +154,16 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
       
       if (settings.dynamic) {
         inputs.livequery(function(){ // use livequery to perform these functions on the new elements added to the form
-          console.log("New input element in DOM. Setting data: %o", input_value($(this)) )
           $(this)
-            .data('initial', input_value($(this)))
-            .bind("blur.dirty_form", inputs, input_checker)
+            .bind("blur.dirty_form", {inputs: inputs, settings: settings, form: form}, $.DirtyForm.input_checker)
+            .data('initial', $.DirtyForm.input_value($(this)))
         });
       }else {
-        // inputs.bind("blur.dirty_form", inputs, input_checker)
         inputs.each(function(){
-          console.log("Init for input. Setting data: %o", input_value($(this)) )
           $(this)
-            .bind("blur.dirty_form", inputs, input_checker)
-            .data("initial", input_value($(this)));
+            .bind("blur.dirty_form", {inputs: inputs, settings: settings, form: form}, $.DirtyForm.input_checker)
+            .data("initial", $.DirtyForm.input_value($(this)));
         });
-        // TODO: missing data("initial")
       }
     });
   };
@@ -180,7 +176,7 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
     return this.each(function(){
       stopper = $(this);
       stopper.click(function(event){
-        if($("form").are_dirty()) {
+        if($($.DirtyForm.observed_forms).are_dirty()) {
           event.preventDefault();
           var div = $("<div id='dirty_stopper_dialog'/>").appendTo(document.body)
           href = $(this).attr('href')
