@@ -1,79 +1,3 @@
-// TODO's 
-// send off forms dirty event when a form is dirtied so the page knows its been tarnished. (done, dvd 09-01-2009)
-// make the stoppers work for anchor links
-// Write docs + examples (done, dvd 09-01-2009)
-// investigate: can make this work for "non-form"-forms too? I.e. given a container element, check dirtiness for the inputs inside it.
-// investigate: possible to change this so that one can provide an extra selector to further filter the inputs in a form. I.e. "this form is to be considered dirty if inputs with class foo changes"
-/*
-=====================
-= DirtyForms How-To =
-=====================
-
-Example usage:
-
-  // All forms in the page will be observed
-  // Whenever an input value changes it will get the 'changed' class added to it
-  $(function(){
-    $("form").dirty_form();
-  });
-    
-  // All forms in the page will be observed
-  // Whenever an input value changes it will get the 'forever_changes' class added to it
-  $(function(){
-    $("form").dirty_form({changeClass: "forever_changes"});
-  });
-    
-  // Often times you want to apply the "changed" CSS class to more than one element.
-  // To support this, DirtyForm can take a "addClassOn" option.
-  // Pass in a function that will be executed in the context of the dirty input element
-  // and the return value of the function will be added to the list of elements that
-  // get the "changed" class. In this function "this" refers to the dirty element.
-  // The code below will add the "change" class to the dirty input and to any labels 
-  // descendants of the li element that contains the input. 
-  // Example:
-  $("form").dirty_form({
-    addClassOn: function(){ 
-      return this.parents("li").find("label");
-      }
-    });
-  
-  // Forms within the "ch-ch-ch-changes" DIV in the page will be observed
-  // Whenever an input value changes it will get the 'changed' class added to it
-  $(function(){
-    $("#ch-ch-ch-changes form").dirty_form();
-  });
-
-  // Forms can observe the "dirty" event for customized behavior
-  $(function(){
-    $("form")
-      .dirty_form()
-      .dirty(function(event, data){
-        var label = $(event.target).parents("li").find("label");
-        $("body").append("<p>" + label.text() + "Changed from " + data.from + " to: " + data.to+ "</p>")
-      })
-  });
-  
-  // As of this writing jQuery does not support event bubbling for custom events
-  // See discussion here: http://groups.google.com/group/jquery-dev/browse_thread/thread/1acd358ceeacd67a
-  // Once the patch is in any DOM element can subscribe to the "dirty" event
-  
-  
-  // The $.DirtyForm singleton can be used for whole-page configuration
-  $(function(){
-    $.DirtyForm.dynamic = false // Don't bother watching out for dynamic additions to the DOM
-    $.DirtyForm.debug = true    // Turn on logging
-    $.DirtyForm.logger = my_fancy_logger_fn // Override the default logger from console.log (if Firebug is available) or a plain-jane alert (for IE) -- NOT WORKING RIGHT NOW. GRR
-  });
-  
-  // All configuration options can be set per-instance
-  $(function(){
-    $("#some_form").dirty_form({dynamic: false})
-    $("#other_form").dirty_form({dynamic: true})
-    $("#third_form").dirty_form({debug: true})
-  });
-
-*/
-
 if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
 
 (function($){
@@ -171,31 +95,75 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
   
   // this is meant for selecting links that will warn about proceeding if there are any dirty forms on the page
   $.fn.dirty_stopper = function(){
-    $.DirtyForm.logger("Setting dirty stoppers")
+    var defaults = {
+      dialog : {
+        title: "Warning: Unsaved Changes!",
+        height: 300,
+        width: 500,
+        modal: true,
+        resizeable: false,
+        autoResize: false,
+        overlay: {backgroundColor: "black", opacity: 0.5}
+      },
+      message : '<br/><p>You have changed form data without saving. All of your changes will be lost.</p><p>Are you sure you want to proceed?</p>'
+    }
+    
+    var settings = $.extend(defaults, arguments.length != 0 ? arguments[0] : {});
+    
+    
+    $.DirtyForm.logger("Setting dirty stoppers")    
     
     return this.each(function(){
-      stopper = $(this);
-      stopper.click(function(event){
-        if($($.DirtyForm.observed_forms).are_dirty()) {
-          event.preventDefault();
-          var div = $("<div id='dirty_stopper_dialog'/>").appendTo(document.body)
-          href = $(this).attr('href')
-          div.dialog({
-            title: "Warning: Unsaved Changes!",
-            height: 300,
-            width: 500,
-            modal: true,
-            buttons: {
-              'Proceed': function(){window.location = href},
-              'Cancel': function(){$(this).dialog('destroy').remove()}
-            },
-            resizeable: false,
-            autoResize: false,
-            overlay: {backgroundColor: "black", opacity: 0.5}
-          });
-          div.append("<br/><p>You have changed form data without saving. Are you sure you want to proceed?</p>");
-        }
-      });
+      var stopper = $(this);
+      if ($(this).parents('.ui-tabs-nav').length > 0){
+        // Unchaining these tabs calls made the tab links not work
+        var tabs = $(this).parents('.ui-tabs-nav')
+        tabs.find('a').unbind('click.dirty_form')
+        tabs.unbind('tabsselect.dirty_form')
+        tabs.bind('tabsselect.dirty_form', function(event, ui){          
+          if($($.DirtyForm.observed_forms).are_dirty()) {
+            event.preventDefault();
+            var div = $("<div id='dirty_stopper_dialog'/>").appendTo(document.body)
+            var href = $(this).attr('href')
+            div.dialog($.extend(settings.dialog, {
+              buttons: {
+                'Proceed': function(){
+                  var selected_id = $(ui.tab).parent().siblings('.ui-tabs-selected').find('a').attr('href');
+                  
+                  // reset the form in the selected tab and make sure it cleans up after itself
+                  $('form', selected_id).each(function(){this.reset();})
+                    .find('.changed:input').triggerHandler('blur.dirty_form');
+                  
+                  // select the tab now that the old tab is clean
+                  tabs.tabs('select', $(ui.tab).attr('href'));
+                  
+                  // close the dialog with fire
+                  $(this).dialog('destroy').remove()
+                },
+                'Cancel': function(){$(this).dialog('destroy').remove()}
+              }
+            }));
+            div.append(settings.message);
+            return false
+          }
+        })
+      } else {
+        stopper.unbind('click.dirty_form')
+        stopper.bind('click.dirty_form', function(event){
+          if($($.DirtyForm.observed_forms).are_dirty()) {
+            event.preventDefault();
+            var div = $("<div id='dirty_stopper_dialog'/>").appendTo(document.body)
+            href = $(this).attr('href')
+            div.dialog($.extend(settings.dialog, {
+              buttons: {
+                'Proceed': function(){window.location = href},
+                'Cancel': function(){$(this).dialog('destroy').remove()}
+              }
+            }));
+            div.append(settings.message);
+          }
+        });
+      }
     });
   }
   
