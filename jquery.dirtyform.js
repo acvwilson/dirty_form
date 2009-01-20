@@ -132,7 +132,9 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
                   
                   // reset the form in the selected tab and make sure it cleans up after itself
                   $('form', selected_id).each(function(){this.reset();})
-                    .find('.changed:input').triggerHandler('blur.dirty_form');
+                    .find('.changed:input').each(function(){
+                      $(this).trigger('blur.dirty_form')
+                    });
                   
                   // select the tab now that the old tab is clean
                   tabs.tabs('select', $(ui.tab).attr('href'));
