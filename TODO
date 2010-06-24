@@ -1,2 +1,3 @@
 make the stoppers work for anchor links
 investigate: possible to change this so that one can provide an extra selector to further filter the inputs in a form. I.e. "this form is to be considered dirty if inputs with class foo changes"
+monitorEvent setting cannot be changed per-instance; only globally.

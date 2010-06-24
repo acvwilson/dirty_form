@@ -11,6 +11,8 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
       changedClass  : 'changed',
       addClassOn    : new Function,
       hasFirebug    : "console" in window && "firebug" in window.console,
+      includeHidden : false,
+      monitorEvent  : 'blur',
       logger        : function(msg){
                         if(this.debug){
                           msg = "DirtyForm: " + msg;
@@ -30,7 +32,7 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
                         } else {
                           input.val(input.data('initial'));
                         }
-                        input.trigger('blur.dirty_form')
+                        input.trigger($.DirtyForm.monitorEvent + '.dirty_form')
                       },
       input_checker : function(event){
                         var npt = $(event.target), form = npt.parents('.dirtyform'), initial = npt.data("initial"), current = $.DirtyForm.input_value(npt), inputs = event.data.inputs, settings = event.data.settings
@@ -66,10 +68,15 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
       var dirtyform = $(this)
       if(dirtyform.is('form')) {
         dirtyform.reset().find('.changed:input').each(function(){
-          $(this).trigger('blur.dirty_form');
+          $(this).trigger($.DirtyForm.monitorEvent + '.dirty_form');
         });
       } else {
-        $(':input:not(:hidden,:submit,:password,:button)', dirtyform).each(function(){
+        var selectorFilters = ':submit,:password,:button';
+        if (!settings.includeHidden) {
+          selectorFilters = ':hidden,' + selectorFilters;
+        }
+
+        $(':input:not(' + selectorFilters + ')', dirtyform).each(function(){
           $.DirtyForm.input_reset($(this));
         });
       }
@@ -89,12 +96,17 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
     return this.each(function(){
       var form = $(this);
 
-      var inputs = $(':input:not(:hidden,:submit,:password,:button)', form)
+      var selectorFilters = ':submit,:password,:button';
+      if (!settings.includeHidden) {
+        selectorFilters = ':hidden,' + selectorFilters;
+      }
+
+      var inputs = $(':input:not(' + selectorFilters + ')', form);
 
       if( form.hasClass('dirtyform') ){
         // unbind all DirtyForms specific events, then proceed to re-add them
         form.unbind("dirty").unbind("clean");
-        inputs.unbind("blur.dirty_form");
+        inputs.unbind($.DirtyForm.monitorEvent + ".dirty_form");
       }else{
         // mark it as a dirtyform
         $(this).addClass('dirtyform')
@@ -105,13 +117,13 @@ if (typeof jQuery == 'undefined') throw("jQuery could not be found.");
       if (settings.dynamic) {
         inputs.livequery(function(){ // use livequery to perform these functions on the new elements added to the form
           $(this)
-            .bind("blur.dirty_form", {inputs: inputs, settings: settings}, $.DirtyForm.input_checker)
+            .bind($.DirtyForm.monitorEvent + ".dirty_form", {inputs: inputs, settings: settings}, $.DirtyForm.input_checker)
             .data('initial', $.DirtyForm.input_value($(this)))
         });
       }else {
         inputs.each(function(){
           $(this)
-            .bind("blur.dirty_form", {inputs: inputs, settings: settings}, $.DirtyForm.input_checker)
+            .bind($.DirtyForm.monitorEvent + ".dirty_form", {inputs: inputs, settings: settings}, $.DirtyForm.input_checker)
             .data("initial", $.DirtyForm.input_value($(this)));
         });
       }

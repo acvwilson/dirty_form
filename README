@@ -49,7 +49,21 @@ Whenever an input value changes it will get the 'changed' class added to it
 As of this writing jQuery does not support event bubbling for custom events
 See discussion here: http://groups.google.com/group/jquery-dev/browse_thread/thread/1acd358ceeacd67a
 Once the patch is in any DOM element can subscribe to the "dirty" event
-  
+
+By default, hidden inputs are not observed; this can be overridden by
+setting the includeHidden configuration:
+
+$.DirtyForm.includeHidden = true;
+
+Dirty form detection is performed using the blur event; when any input
+loses focus, its value is checked against its previous value and if
+they differ the field is marked dirty.  The downside of this is that
+changes to radio buttons and checkboxes won't be detected until the
+element loses focus, instead of immediately when checked.  You can
+tell DirtyForm to use a different event (i.e. change) with the
+monitorEvent property:
+
+$.DirtyForm.monitorEvent = 'change';
   
 The $.DirtyForm singleton can be used for whole-page configuration
   $(function(){
