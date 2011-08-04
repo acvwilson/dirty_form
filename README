@@ -9,13 +9,13 @@ Whenever an input value changes it will get the 'changed' class added to it
   $(function(){
     $("form").dirty_form();
   });
-    
+
   // All forms in the page will be observed
   // Whenever an input value changes it will get the 'forever_changes' class added to it
   $(function(){
-    $("form").dirty_form({changeClass: "forever_changes"});
+    $("form").dirty_form({changedClass: "forever_changes"});
   });
-    
+
 Often times you want to apply the "changed" CSS class to more than one element.
 To support this, DirtyForm can take a "addClassOn" option.
 Pass in a function that will be executed in the context of the dirty input element
@@ -29,7 +29,7 @@ Example:
       return this.parents("li").find("label");
       }
     });
-  
+
 Forms within the "ch-ch-ch-changes" DIV in the page will be observed
 Whenever an input value changes it will get the 'changed' class added to it
   $(function(){
@@ -45,7 +45,7 @@ Whenever an input value changes it will get the 'changed' class added to it
         $("body").append("<p>" + label.text() + "Changed from " + data.from + " to: " + data.to+ "</p>")
       })
   });
-  
+
 As of this writing jQuery does not support event bubbling for custom events
 See discussion here: http://groups.google.com/group/jquery-dev/browse_thread/thread/1acd358ceeacd67a
 Once the patch is in any DOM element can subscribe to the "dirty" event
@@ -71,7 +71,7 @@ The $.DirtyForm singleton can be used for whole-page configuration
     $.DirtyForm.debug = true    // Turn on logging
     $.DirtyForm.logger = my_fancy_logger_fn // Override the default logger from console.log (if Firebug is available) or a plain-jane alert (for IE) -- NOT WORKING RIGHT NOW. GRR
   });
-  
+
 All configuration options can be set per-instance
   $(function(){
     $("#some_form").dirty_form({dynamic: false})
