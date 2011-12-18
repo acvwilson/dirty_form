@@ -87,7 +87,8 @@ $(function(){
 ```
 
 All configuration options can be set per-instance
-```javscript
+
+```javascript
 $(function(){
   $("#some_form").dirty_form({dynamic: false})
   $("#other_form").dirty_form({dynamic: true})
