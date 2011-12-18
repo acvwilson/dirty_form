@@ -60,7 +60,7 @@ Once the patch is in any DOM element can subscribe to the "dirty" event
 By default, hidden inputs are not observed; this can be overridden by
 setting the includeHidden configuration:
 
-```javscript
+```javascript
 $.DirtyForm.includeHidden = true;
 ```
 
@@ -78,7 +78,7 @@ $.DirtyForm.monitorEvent = 'change';
   
 The $.DirtyForm singleton can be used for whole-page configuration
 
-```javscript
+```javascript
 $(function(){
   $.DirtyForm.dynamic = false // Don't bother watching out for dynamic additions to the DOM
   $.DirtyForm.debug = true    // Turn on logging
